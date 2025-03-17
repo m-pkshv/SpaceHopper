@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 9030151219091565031}
   - component: {fileID: 7185331619508421390}
   - component: {fileID: 2836026902461718060}
+  - component: {fileID: 3164988746251604210}
   m_Layer: 0
   m_Name: Star
   m_TagString: ScorePoint
@@ -120,3 +121,15 @@ CircleCollider2D:
   m_Offset: {x: 0, y: 0}
   serializedVersion: 2
   m_Radius: 0.5
+--- !u!114 &3164988746251604210
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4332389500075189807}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 50f02c52fd5842e4aa748777a8c231b2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

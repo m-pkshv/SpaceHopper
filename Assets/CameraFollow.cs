@@ -4,37 +4,45 @@ public class CameraFollow : MonoBehaviour
 {
     [SerializeField] private Transform target;
     [SerializeField] private float smoothSpeed = 0.125f;
-    [SerializeField] private Vector3 offset = new Vector3(4f, 1f, -10f);
-    [SerializeField] private float lookAheadAmount = 3f; // How far ahead the camera should look
+    [SerializeField] private Vector3 offset = new Vector3(2f, 1f, -10f); // Уменьшенное смещение по X
     
-    private Vector3 desiredPosition;
-    private Vector3 smoothedPosition;
-    private float defaultZPosition;
+    private Vector3 velocity = Vector3.zero;
     
     private void Start()
     {
-        // Find player if not set in inspector
+        // Найти игрока, если не задан в инспекторе
         if (target == null)
             target = FindObjectOfType<PlayerController>().transform;
             
         if (target == null)
             Debug.LogError("Target not set for camera follow script!");
-            
-        defaultZPosition = transform.position.z;
+        
+        // Установить начальное положение камеры с учетом смещения
+        transform.position = new Vector3(
+            target.position.x + offset.x, 
+            target.position.y + offset.y, 
+            offset.z
+        );
     }
     
     private void LateUpdate()
     {
         if (target == null)
             return;
-            
-        // Calculate the desired position with lookahead
-        desiredPosition = target.position + offset;
-        desiredPosition.x += lookAheadAmount; // Look ahead in the direction of movement
-        desiredPosition.z = defaultZPosition; // Keep the original z position
         
-        // Smoothly move the camera towards the desired position
-        smoothedPosition = Vector3.Lerp(transform.position, desiredPosition, smoothSpeed);
-        transform.position = smoothedPosition;
+        // Целевая позиция - игрок плюс фиксированное смещение
+        Vector3 desiredPosition = new Vector3(
+            target.position.x + offset.x, 
+            target.position.y + offset.y, 
+            offset.z
+        );
+        
+        // Плавное следование за игроком
+        transform.position = Vector3.SmoothDamp(
+            transform.position, 
+            desiredPosition, 
+            ref velocity, 
+            smoothSpeed
+        );
     }
 }
