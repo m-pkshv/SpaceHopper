@@ -653,7 +653,10 @@ MonoBehaviour:
   maxFallSpeed: 15
   groundLayers:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 256
+  groundCheckRadius: 0.2
+  coyoteTime: 0.1
+  jumpBufferTime: 0.1
   jumpSound: {fileID: 0}
   deathSound: {fileID: 0}
   onDeath:
@@ -2019,15 +2022,17 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   platformPrefab: {fileID: 8486638772364408960, guid: d925bd366e3b77f4f97251056b46f258, type: 3}
-  minPlatformDistance: 2
-  maxPlatformDistance: 4
-  minPlatformHeight: -2
-  maxPlatformHeight: 2
+  platformWidth: 25
+  platformHeight: -2
   initialPlatformCount: 5
+  minGapWidth: 1
+  maxGapWidth: 3
   obstaclePrefabs:
   - {fileID: 876696255626438620, guid: dbd5297e83245b647b2feb71c53d96c4, type: 3}
   - {fileID: 2939208131112304906, guid: 2f7fdbc149b892c449a7e388ddd3ce5e, type: 3}
-  obstacleChance: 0.5
+  minObstacleDistance: 5
+  maxObstacleDistance: 8
+  obstacleHeightOffset: 1
   collectiblePrefab: {fileID: 4332389500075189807, guid: 5834808ed867c3b40acfef26e91e7947, type: 3}
   collectibleChance: 0.3
 --- !u!1660057539 &9223372036854775807

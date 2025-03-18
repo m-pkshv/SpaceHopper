@@ -1,27 +1,35 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 public class ObstacleGenerator : MonoBehaviour
 {
     [Header("Platform Generation")]
     [SerializeField] private GameObject platformPrefab;
-    [SerializeField] private float minPlatformDistance = 2f;
-    [SerializeField] private float maxPlatformDistance = 4f;
-    [SerializeField] private float minPlatformHeight = -2f;
-    [SerializeField] private float maxPlatformHeight = 2f;
-    [SerializeField] private int initialPlatformCount = 5;
+    [SerializeField] private float platformWidth = 10f; // Ширина отдельной платформы
+    [SerializeField] private float platformHeight = -2f; // Высота платформ
+    [SerializeField] private int initialPlatformCount = 5; // Количество начальных платформ
+    [SerializeField] private float minGapWidth = 2f; // Минимальная ширина разрыва
+    [SerializeField] private float maxGapWidth = 4f; // Максимальная ширина разрыва
     
     [Header("Obstacle Generation")]
     [SerializeField] private GameObject[] obstaclePrefabs;
-    [SerializeField] private float obstacleChance = 0.5f; // Chance of spawning obstacle on a platform
+    [SerializeField] private float minObstacleDistance = 5f; // Минимальное расстояние между препятствиями
+    [SerializeField] private float maxObstacleDistance = 8f; // Максимальное расстояние между препятствиями
+    [SerializeField] private float obstacleHeightOffset = 1f; // Высота препятствий над платформой
     
     [Header("Collectible Generation")]
     [SerializeField] private GameObject collectiblePrefab;
-    [SerializeField] private float collectibleChance = 0.3f; // Chance of spawning collectible
+    [SerializeField] private float collectibleChance = 0.3f; // Шанс создания коллекционного предмета
     
-    // Private variables
+    // Для отслеживания созданных объектов
+    private List<GameObject> activePlatforms = new List<GameObject>();
+    private List<GameObject> activeObstacles = new List<GameObject>();
+    private List<GameObject> activeCollectibles = new List<GameObject>();
+    
     private Transform playerTransform;
-    private float lastPlatformX;
-    private float viewportThreshold = 0.8f; // Generate new platforms when player is at this percentage of viewport
+    private float lastPlatformEndX = 0f;
+    private float screenRightEdge = 0f;
+    private float cleanupDistance = -20f; // Расстояние для удаления объектов за экраном
     
     private void Start()
     {
@@ -33,105 +41,202 @@ public class ObstacleGenerator : MonoBehaviour
             return;
         }
         
-        // Generate initial platforms
-        Vector3 startPos = new Vector3(0, -2, 0);
-        lastPlatformX = startPos.x;
-        
-        // Create a starting platform under the player
-        GameObject startPlatform = Instantiate(platformPrefab, startPos, Quaternion.identity);
-        startPlatform.transform.localScale = new Vector3(3, 0.5f, 1); // Make first platform wider
-        
-        // Generate initial set of platforms
-        for (int i = 0; i < initialPlatformCount; i++)
-        {
-            GenerateNextPlatform();
-        }
+        // Создаем начальные платформы
+        CreateInitialPlatforms();
     }
     
     private void Update()
     {
-        // Check if player is close to the right edge of the screen
-        Vector3 viewportPos = Camera.main.WorldToViewportPoint(playerTransform.position);
-        
-        if (viewportPos.x > viewportThreshold)
-        {
-            GenerateNextPlatform();
-        }
-    }
-    
-    private void GenerateNextPlatform()
-    {
-        // Calculate the next platform position
-        float nextX = lastPlatformX + Random.Range(minPlatformDistance, maxPlatformDistance);
-        float nextY = Random.Range(minPlatformHeight, maxPlatformHeight);
-        
-        // Create the platform
-        Vector3 platformPos = new Vector3(nextX, nextY, 0);
-        GameObject platform = Instantiate(platformPrefab, platformPos, Quaternion.identity);
-        
-        // Randomly scale platform
-        float platformWidth = Random.Range(1f, 2.5f);
-        platform.transform.localScale = new Vector3(platformWidth, 0.5f, 1);
-        
-        // Add platform to the "Ground" layer for collision detection
-        platform.layer = LayerMask.NameToLayer("Ground");
-        
-        // Update the last platform position
-        lastPlatformX = nextX;
-        
-        // Randomly add obstacles
-        if (Random.value < obstacleChance && obstaclePrefabs.Length > 0)
-        {
-            AddObstacle(platform.transform);
-        }
-        
-        // Randomly add collectibles
-        if (Random.value < collectibleChance && collectiblePrefab != null)
-        {
-            AddCollectible(platform.transform);
-        }
-    }
-    
-    private void AddObstacle(Transform platformTransform)
-    {
-        // Select a random obstacle prefab
-        int obstacleIndex = Random.Range(0, obstaclePrefabs.Length);
-        GameObject obstaclePrefab = obstaclePrefabs[obstacleIndex];
-        
-        // Calculate position (on top of platform)
-        Vector3 platformSize = platformTransform.GetComponent<Renderer>().bounds.size;
-        Vector3 obstaclePos = platformTransform.position + new Vector3(0, platformSize.y / 2 + 0.5f, 0);
-        
-        // Create obstacle
-        GameObject obstacle = Instantiate(obstaclePrefab, obstaclePos, Quaternion.identity);
-        
-        // Make obstacle a child of platform so it moves with it
-        obstacle.transform.SetParent(platformTransform);
-        
-        // Tag obstacle for collision detection
-        obstacle.tag = "Obstacle";
-    }
-    
-    private void AddCollectible(Transform platformTransform)
-    {
-        if (collectiblePrefab == null)
+        if (playerTransform == null)
             return;
             
-        // Calculate position (above platform)
-        Vector3 platformSize = platformTransform.GetComponent<Renderer>().bounds.size;
-        Vector3 collectiblePos = platformTransform.position + new Vector3(0, platformSize.y / 2 + 1.5f, 0);
+        // Обновляем положение правого края экрана
+        Camera mainCamera = Camera.main;
+        Vector3 screenRightPoint = new Vector3(Screen.width, Screen.height / 2, 0);
+        Vector3 worldRightPoint = mainCamera.ScreenToWorldPoint(screenRightPoint);
+        screenRightEdge = worldRightPoint.x;
         
-        // Create collectible
-        GameObject collectible = Instantiate(collectiblePrefab, collectiblePos, Quaternion.identity);
+        // Создаем новые платформы, если нужно
+        if (lastPlatformEndX < screenRightEdge + 20f)
+        {
+            CreateNewPlatform();
+        }
         
-        // Tag for scoring
+        // Удаляем объекты, которые игрок уже прошел
+        CleanupObjects();
+    }
+    
+    private void CreateInitialPlatforms()
+    {
+        // Создаем начальную платформу под игроком (более широкую)
+        Vector3 startPosition = new Vector3(-5f, platformHeight, 0);
+        GameObject startPlatform = CreatePlatform(startPosition, platformWidth + 5f); // Делаем первую платформу шире
+        
+        lastPlatformEndX = startPosition.x + (platformWidth + 5f) / 2;
+        
+        // Создаем дополнительные начальные платформы без препятствий
+        for (int i = 0; i < initialPlatformCount; i++)
+        {
+            float gapWidth = Random.Range(minGapWidth, maxGapWidth);
+            lastPlatformEndX += gapWidth; // Добавляем разрыв
+            CreateNewPlatform(false); // Без препятствий на начальных платформах
+        }
+    }
+    
+    private GameObject CreatePlatform(Vector3 position, float width)
+    {
+        GameObject platform = Instantiate(platformPrefab, position, Quaternion.identity);
+        
+        // Устанавливаем размер платформы
+        platform.transform.localScale = new Vector3(width, 0.5f, 1);
+        
+        // Устанавливаем слой Ground
+        platform.layer = LayerMask.NameToLayer("Ground");
+        
+        // Добавляем в список активных платформ
+        activePlatforms.Add(platform);
+        
+        return platform;
+    }
+    
+    private void CreateNewPlatform(bool addObstacles = true)
+    {
+        // Случайная ширина платформы (вариантность для разнообразия)
+        float width = Random.Range(platformWidth * 0.8f, platformWidth * 1.2f);
+        
+        // Позиция новой платформы (учитывая предыдущий разрыв)
+        Vector3 platformPosition = new Vector3(lastPlatformEndX + width / 2, platformHeight, 0);
+        
+        // Создаем новую платформу
+        GameObject platform = CreatePlatform(platformPosition, width);
+        
+        // Обновляем позицию конца последней платформы
+        lastPlatformEndX = platformPosition.x + width / 2;
+        
+        // Добавляем разрыв после платформы
+        lastPlatformEndX += Random.Range(minGapWidth, maxGapWidth);
+        
+        // Добавляем препятствия, если разрешено
+        if (addObstacles && width > 7f) // Только для достаточно широких платформ
+        {
+            AddObstaclesToPlatform(platform);
+        }
+        
+        // Добавляем коллекционные предметы над разрывами
+        if (collectiblePrefab != null)
+        {
+            AddCollectiblesOverGap(platformPosition.x + width / 2, lastPlatformEndX - width / 2);
+        }
+    }
+    
+    private void AddObstaclesToPlatform(GameObject platform)
+    {
+        if (obstaclePrefabs.Length == 0)
+            return;
+            
+        // Получаем размеры платформы
+        float platformWidth = platform.transform.localScale.x;
+        Vector3 platformLeft = platform.transform.position - new Vector3(platformWidth / 2, 0, 0);
+        
+        // Добавляем препятствие на платформу (если она достаточно широкая)
+        if (platformWidth >= 6f) 
+        {
+            // Выбираем случайное препятствие
+            int obstacleIndex = Random.Range(0, obstaclePrefabs.Length);
+            
+            // Случайная позиция на платформе (не у краев)
+            float obstacleX = platformLeft.x + Random.Range(platformWidth * 0.3f, platformWidth * 0.7f);
+            
+            // Создаем препятствие
+            Vector3 obstaclePosition = new Vector3(
+                obstacleX, 
+                platform.transform.position.y + obstacleHeightOffset,
+                0
+            );
+            
+            GameObject obstacle = Instantiate(obstaclePrefabs[obstacleIndex], obstaclePosition, Quaternion.identity);
+            obstacle.tag = "Obstacle";
+            activeObstacles.Add(obstacle);
+            
+            // Создаем коллекционный предмет рядом с препятствием с некоторым шансом
+            if (Random.value < collectibleChance * 0.5f && collectiblePrefab != null)
+            {
+                AddCollectible(new Vector3(obstacleX + 1.5f, obstaclePosition.y + 1.5f, 0));
+            }
+        }
+    }
+    
+    private void AddCollectiblesOverGap(float gapStartX, float gapEndX)
+    {
+        if (collectiblePrefab == null || Random.value > collectibleChance)
+            return;
+            
+        // Расстояние разрыва
+        float gapDistance = gapEndX - gapStartX;
+        
+        // Если разрыв достаточно большой, добавляем коллекционные предметы
+        if (gapDistance >= 2f)
+        {
+            int collectibleCount = Mathf.FloorToInt(gapDistance / 1.5f);
+            
+            for (int i = 0; i < collectibleCount; i++)
+            {
+                float posX = gapStartX + (i + 1) * gapDistance / (collectibleCount + 1);
+                float posY = platformHeight + Random.Range(2f, 3f); // Над разрывом
+                
+                AddCollectible(new Vector3(posX, posY, 0));
+            }
+        }
+    }
+    
+    private void AddCollectible(Vector3 position)
+    {
+        GameObject collectible = Instantiate(collectiblePrefab, position, Quaternion.identity);
         collectible.tag = "ScorePoint";
         
-        // Add a trigger collider if not already present
+        // Добавляем триггер-коллайдер, если его нет
         if (collectible.GetComponent<Collider2D>() == null)
         {
             CircleCollider2D collider = collectible.AddComponent<CircleCollider2D>();
             collider.isTrigger = true;
+        }
+        
+        activeCollectibles.Add(collectible);
+    }
+    
+    private void CleanupObjects()
+    {
+        float cleanupX = playerTransform.position.x + cleanupDistance;
+        
+        // Очистка платформ
+        for (int i = activePlatforms.Count - 1; i >= 0; i--)
+        {
+            if (activePlatforms[i] != null && activePlatforms[i].transform.position.x + 
+                (activePlatforms[i].transform.localScale.x / 2) < cleanupX)
+            {
+                Destroy(activePlatforms[i]);
+                activePlatforms.RemoveAt(i);
+            }
+        }
+        
+        // Очистка препятствий
+        for (int i = activeObstacles.Count - 1; i >= 0; i--)
+        {
+            if (activeObstacles[i] != null && activeObstacles[i].transform.position.x < cleanupX)
+            {
+                Destroy(activeObstacles[i]);
+                activeObstacles.RemoveAt(i);
+            }
+        }
+        
+        // Очистка коллекционных предметов
+        for (int i = activeCollectibles.Count - 1; i >= 0; i--)
+        {
+            if (activeCollectibles[i] != null && activeCollectibles[i].transform.position.x < cleanupX)
+            {
+                Destroy(activeCollectibles[i]);
+                activeCollectibles.RemoveAt(i);
+            }
         }
     }
 }

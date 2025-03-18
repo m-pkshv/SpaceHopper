@@ -67,6 +67,7 @@
     <Compile Include="Assets\ObstacleGenerator.cs" />
     <Compile Include="Assets\CameraFollow.cs" />
     <Compile Include="Assets\GameManager.cs" />
+    <Compile Include="Assets\SimpleRotation.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">
