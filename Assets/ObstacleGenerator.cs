@@ -70,15 +70,14 @@ public class ObstacleGenerator : MonoBehaviour
     {
         // Создаем начальную платформу под игроком (более широкую)
         Vector3 startPosition = new Vector3(-5f, platformHeight, 0);
-        GameObject startPlatform = CreatePlatform(startPosition, platformWidth + 5f); // Делаем первую платформу шире
+        GameObject startPlatform = CreatePlatform(startPosition, platformWidth + 5f);
         
+        // Устанавливаем начальное значение lastPlatformEndX как правый край первой платформы
         lastPlatformEndX = startPosition.x + (platformWidth + 5f) / 2;
         
         // Создаем дополнительные начальные платформы без препятствий
         for (int i = 0; i < initialPlatformCount; i++)
         {
-            float gapWidth = Random.Range(minGapWidth, maxGapWidth);
-            lastPlatformEndX += gapWidth; // Добавляем разрыв
             CreateNewPlatform(false); // Без препятствий на начальных платформах
         }
     }
@@ -101,32 +100,30 @@ public class ObstacleGenerator : MonoBehaviour
     
     private void CreateNewPlatform(bool addObstacles = true)
     {
-        // Случайная ширина платформы (вариантность для разнообразия)
+        // Случайная ширина платформы
         float width = Random.Range(platformWidth * 0.8f, platformWidth * 1.2f);
         
-        // Позиция новой платформы (учитывая предыдущий разрыв)
-        Vector3 platformPosition = new Vector3(lastPlatformEndX + width / 2, platformHeight, 0);
+        // Сначала добавляем разрыв к концу предыдущей платформы
+        float gapSize = 2.5f; // Фиксированный разрыв для тестирования float gapSize = Random.Range(minGapWidth, maxGapWidth); !!!!!
+        float startPositionAfterGap = lastPlatformEndX + gapSize;
+        
+        // Центр новой платформы должен быть на половину её ширины правее точки после разрыва
+        Vector3 platformPosition = new Vector3(startPositionAfterGap + width/2, platformHeight, 0);
+        
+        Debug.Log("Последняя платформа заканчивается на x=" + lastPlatformEndX);
+        Debug.Log("Добавлен разрыв " + gapSize + ". Позиция после разрыва = " + startPositionAfterGap);
+        Debug.Log("Создаем платформу: ширина=" + width + 
+                ", центр на x=" + platformPosition.x +
+                ", левый край на x=" + (platformPosition.x - width/2) +
+                ", правый край на x=" + (platformPosition.x + width/2));
         
         // Создаем новую платформу
         GameObject platform = CreatePlatform(platformPosition, width);
         
-        // Обновляем позицию конца последней платформы
+        // Обновляем позицию конца последней платформы (правый край)
         lastPlatformEndX = platformPosition.x + width / 2;
         
-        // Добавляем разрыв после платформы
-        lastPlatformEndX += Random.Range(minGapWidth, maxGapWidth);
-        
-        // Добавляем препятствия, если разрешено
-        if (addObstacles && width > 7f) // Только для достаточно широких платформ
-        {
-            AddObstaclesToPlatform(platform);
-        }
-        
-        // Добавляем коллекционные предметы над разрывами
-        if (collectiblePrefab != null)
-        {
-            AddCollectiblesOverGap(platformPosition.x + width / 2, lastPlatformEndX - width / 2);
-        }
+        Debug.Log("Новый lastPlatformEndX = " + lastPlatformEndX);
     }
     
     private void AddObstaclesToPlatform(GameObject platform)
